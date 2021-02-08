@@ -1,0 +1,45 @@
+worker_processes auto;
+#daemon off;
+pid /tmp/nginx.pid;
+error_log  /dev/stderr error;
+
+worker_rlimit_nofile 4096;
+
+events {{
+  worker_connections 4096;
+}}
+
+http {{
+  include /etc/nginx/mime.types;
+  default_type application/json;
+  access_log /dev/stdout combined;
+
+  upstream titron_upstream {{
+    server 0.0.0.0:8000;
+  }}
+
+
+
+  server {{
+    listen 8080 deferred;
+    client_max_body_size 0;
+    client_body_buffer_size 100m;
+    subrequest_output_buffer_size 100m;
+
+
+    location /ping {{
+        proxy_pass http://titron_upstream/v2/models/{0}/versions/1/ready;
+    }}
+
+    location /invocations {{
+       proxy_pass http://titron_upstream/v2/models/{0}/versions/1/infer;
+    }}
+
+ 
+    location / {{
+        return 404 '{{"error": "Not Found"}}';
+    }}
+
+    keepalive_timeout 3;
+  }}
+}}
